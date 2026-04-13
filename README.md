@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="128x128@2x.png" alt="Grid Plus" width="128" height="128" />
+  <img src="src-tauri/icons/128x128@2x.png" alt="Grid Plus" width="128" height="128" />
 </p>
 
 <h1 align="center">Grid Plus</h1>
@@ -19,15 +19,16 @@
 
 ## What is Grid Plus?
 
-Grid Plus is a native desktop application for connecting to and managing PostgreSQL databases. Built with **Tauri v2** (Rust) and **React/TypeScript**, it delivers a lightweight, secure, and responsive experience without the overhead of Electron-based alternatives.
+Grid Plus is a native desktop application for connecting to and managing PostgreSQL databases. Built with **Rust** and **React/TypeScript**, it delivers a lightweight, secure, and responsive experience without the overhead of Electron-based alternatives.
 
 ### Key Features
 
 - **Multi-connection management** — Connect to multiple PostgreSQL databases simultaneously
-- **Tabbed query editor** — Write and execute SQL across multiple tabs with syntax highlighting (CodeMirror 6)
+- **Tabbed query editor** — Write and execute SQL across multiple tabs with syntax highlighting
 - **Schema browser** — Browse tables, columns, and database objects at a glance
 - **Transaction support** — Full `BEGIN`/`COMMIT`/`ROLLBACK` control per editor session
-- **Virtualized results** — Handle large result sets efficiently with virtualized row rendering
+- **Visual EXPLAIN plans** — Interactive node graphs with cost, buffer, and timing diagnostics
+- **Virtualized results** — Handle large result sets efficiently with canvas-rendered rows
 - **Data export** — Export query results for further analysis
 - **Auto-save** — Query buffers are automatically saved and restored across sessions
 - **Secure credential storage** — Passwords are stored in the OS Keychain, never in plain text
@@ -52,6 +53,36 @@ Grid Plus is a native desktop application for connecting to and managing Postgre
 
 ---
 
+## Under the Hood
+
+Grid Plus is not just another SQL GUI wrapping a web app in a desktop shell. Every layer is engineered for speed and safety.
+
+### Arrow Binary Transfer
+
+Query results are serialized as [Apache Arrow IPC](https://arrow.apache.org/docs/format/Columnar.html) in Rust and decoded zero-copy on the frontend. No JSON marshalling, no string parsing — raw columnar binary straight from the database to your screen.
+
+### Canvas-Rendered Data Grid
+
+Results render on an HTML5 Canvas, not the DOM. Smooth 60fps scrolling through large result sets without layout thrashing or DOM node explosion.
+
+### Async Parallel Execution
+
+Batch queries run as concurrent [Tokio](https://tokio.rs/) tasks in Rust. Table views fetch data and row counts in parallel. The UI never waits for one query to finish before starting the next.
+
+### Auto LIMIT Protection
+
+Unbounded `SELECT` queries automatically receive a configurable LIMIT (default 1000) to prevent accidental full-table scans that could lock up your database or flood your machine with rows. Your existing `LIMIT` clauses are always respected.
+
+### Visual EXPLAIN Plans
+
+View query execution plans as interactive node graphs with cost, buffer, and timing diagnostics. Understand where your query spends time without reading raw `EXPLAIN` output.
+
+### Rust Backend
+
+Zero garbage collection. Memory-safe. ~15 MB binary. Connection pooling, transaction session management, and PostgreSQL type mapping all happen in compiled Rust — not a runtime interpreter.
+
+---
+
 ## Download
 
 ### Latest Release
@@ -69,56 +100,16 @@ You can also browse [all releases](https://github.com/lengzuo/grid-plus/releases
 
 1. Download the `.dmg` file for your architecture
 2. Open the `.dmg` and drag **Grid Plus** into your Applications folder
-3. On first launch, macOS may warn about an unidentified developer:
-   - Go to **System Settings > Privacy & Security** and click **Open Anyway**
-4. Connect to your PostgreSQL database and start querying
+3. **Remove the quarantine flag** (code signing is on the way):
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/Grid\ Plus.app
+   ```
+4. Open Grid Plus from your Applications folder
+5. Connect to your PostgreSQL database and start querying
 
 ### Auto-Updates
 
 Grid Plus checks for updates automatically on launch. When a new version is available, you'll see an in-app notification to download and install it.
-
----
-
-## Architecture
-
-Grid Plus is built with a modern, layered architecture:
-
-```
-┌─────────────────────────────────┐
-│     React + TypeScript (UI)     │  Frontend
-│   CodeMirror 6 · TanStack Table │
-├─────────────────────────────────┤
-│        Tauri v2 IPC Bridge      │  Native boundary
-├─────────────────────────────────┤
-│       Rust Backend (Tokio)      │  Backend
-│  Connection pools · SQL engine  │
-│  Domain rules · Value mapping   │
-├─────────────────────────────────┤
-│     PostgreSQL · SQLite (WAL)   │  Data layer
-│     OS Keychain (credentials)   │
-└─────────────────────────────────┘
-```
-
-### Tech Stack
-
-| Component | Technology |
-|-----------|-----------|
-| Framework | [Tauri v2](https://v2.tauri.app/) |
-| Frontend | React 19 + TypeScript + Vite |
-| Backend | Rust (2021 edition) |
-| Database Driver | [sqlx](https://github.com/launchbadge/sqlx) (async, compile-time checked) |
-| UI Components | [shadcn/ui](https://ui.shadcn.com/) (Radix primitives) |
-| Styling | Tailwind CSS v4 |
-| Editor | CodeMirror 6 |
-
-### Why Tauri?
-
-| | Tauri (Grid Plus) | Electron |
-|-|-------------------|----------|
-| Binary size | ~15 MB | ~150 MB+ |
-| Memory usage | Low (native webview) | High (bundled Chromium) |
-| Backend | Rust (memory-safe, fast) | Node.js |
-| Security | OS-level webview sandbox + Rust type safety | Chromium sandbox |
 
 ---
 
@@ -172,11 +163,11 @@ When reporting a bug, include:
 
 ## Roadmap
 
+- [ ] Code signing & notarization
 - [ ] Windows and Linux support
 - [ ] MySQL adapter
 - [ ] SQLite adapter
 - [ ] SSH tunnel connections
-- [ ] Query plan visualization (`EXPLAIN ANALYZE`)
 
 ---
 
