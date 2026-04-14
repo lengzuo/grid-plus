@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src-tauri/icons/128x128@2x.png" alt="Grid Plus" width="128" height="128" />
+  <img src="128x128@2x.png" alt="Grid Plus" width="128" height="128" />
 </p>
 
 <h1 align="center">Grid Plus</h1>
